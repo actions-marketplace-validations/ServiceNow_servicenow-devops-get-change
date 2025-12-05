@@ -1,6 +1,20 @@
 const core = require('@actions/core');
 const axios = require('axios');
 
+function circularSafeStringify(obj) {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+      if (key === '_sessionCache') return undefined;
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular]';
+        }
+        seen.add(value);
+      }
+      return value;
+    });
+}
+
 const main = async () => {
     let status = "NOT-STARTED";
     try {
@@ -50,6 +64,7 @@ const main = async () => {
             let buildNumber = changeDetails.build_number;
             let pipelineName = changeDetails.pipeline_name;
             let stageName = changeDetails.stage_name;
+            let attemptNumber = changeDetails.attempt_number;
 
             //Checking if any input values are empty and defaulting to the current Stage, Pipeline Name, Build Number
 
@@ -63,7 +78,7 @@ const main = async () => {
             if (stageName == null || stageName == '')
                 stageName = `${githubContext.job}`;
 
-            console.log("buildNumber => " + buildNumber + ", pipelineName => " + pipelineName + ", stageName => " + stageName);
+            console.log("buildNumber => " + buildNumber + ", pipelineName => " + pipelineName + ", stageName => " + stageName + ", attemptNumber => " + attemptNumber);
 
 
             let restendpoint = '';
@@ -71,21 +86,21 @@ const main = async () => {
             let httpHeaders = {};
 
             try {
-                if(token === '' && username === '' && passwd === '') {
+                if (token === '' && username === '' && passwd === '') {
                     core.setFailed('Either secret token or integration username, password is needed for integration user authentication');
                     return;
                 }
-                else if(token !== '') {
-                    restendpoint = `${instanceUrl}/api/sn_devops/v2/devops/orchestration/changeInfo?buildNumber=${buildNumber}&stageName=${stageName}&pipelineName=${pipelineName}&toolId=${toolId}`;
+                else if (token !== '') {
+                    restendpoint = `${instanceUrl}/api/sn_devops/v2/devops/orchestration/changeInfo?buildNumber=${buildNumber}&stageName=${stageName}&pipelineName=${pipelineName}&attemptNumber=${attemptNumber}&toolId=${toolId}`;
                     const defaultHeadersForToken = {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'Authorization': 'sn_devops.DevOpsToken '+`${toolId}:${token}`
+                        'Authorization': 'sn_devops.DevOpsToken ' + `${toolId}:${token}`
                     };
                     httpHeaders = { headers: defaultHeadersForToken };
                 }
-                else if(username !== '' && passwd !== '') {
-                    restendpoint = `${instanceUrl}/api/sn_devops/v1/devops/orchestration/changeInfo?buildNumber=${buildNumber}&stageName=${stageName}&pipelineName=${pipelineName}&toolId=${toolId}`;
+                else if (username !== '' && passwd !== '') {
+                    restendpoint = `${instanceUrl}/api/sn_devops/v1/devops/orchestration/changeInfo?buildNumber=${buildNumber}&stageName=${stageName}&pipelineName=${pipelineName}&attemptNumber=${attemptNumber}&toolId=${toolId}`;
                     const tokenBasicAuth = `${username}:${passwd}`;
                     const encodedTokenForBasicAuth = Buffer.from(tokenBasicAuth).toString('base64');
 
@@ -100,7 +115,9 @@ const main = async () => {
                     core.setFailed('For Basic Auth, Username and Password is mandatory for integration user authentication');
                     return;
                 }
+                core.debug("[ServiceNow DevOps], Sending Request for Get Change, Request Header :"+JSON.stringify(httpHeaders)+"\n");
                 response = await axios.get(restendpoint, httpHeaders);
+                core.debug("[ServiceNow DevOps], Receiving response for Get Change, Response :"+circularSafeStringify(response)+"\n");
 
                 if (response.data && response.data.result) {
                     status = "SUCCESS";
@@ -161,13 +178,14 @@ const main = async () => {
 
     } catch (error) {
         core.setOutput("status", status);
-        core.setFailed(error.message)
+        core.setFailed(error.message);
     }
     core.setOutput("status", status);
 }
 function displayErrorMsg(errMsg) {
 
     console.error('\n\x1b[31m' + errMsg + '\x1b[31m');
+    core.setFailed(errMsg);
 }
 
 main();

@@ -34,14 +34,13 @@ deploy:
     runs-on: ubuntu-latest
     steps:     
       - name: ServiceNow Get Change
-        uses: ServiceNow/servicenow-devops-get-change@v2.0.0
+        uses: ServiceNow/servicenow-devops-get-change@v3.1.0
         with:
           devops-integration-token: ${{ secrets.SN_DEVOPS_INTEGRATION_TOKEN }}
           instance-url: ${{ secrets.SN_INSTANCE_URL }}
           tool-id: ${{ secrets.SN_ORCHESTRATION_TOOL_ID }}
           context-github: ${{ toJSON(github) }}
-          job-name: 'Deploy'
-          change-details: '{"build_number":"21","pipeline_name":"CI_Pipeline","stage_name":"Create_Change"}'
+          change-details: '{"build_number":"21","pipeline_name":"CI_Pipeline","stage_name":"Create_Change","attempt_number":"1"}'
 ```
 # For Basic Authentication at ServiceNow instance
 ```yaml
@@ -51,15 +50,14 @@ deploy:
     runs-on: ubuntu-latest
     steps:     
       - name: ServiceNow Get Change
-        uses: ServiceNow/servicenow-devops-get-change@v2.0.0
+        uses: ServiceNow/servicenow-devops-get-change@v3.1.0
         with:
           devops-integration-user-name: ${{ secrets.SN_DEVOPS_USER }}
           devops-integration-user-password: ${{ secrets.SN_DEVOPS_PASSWORD }}
           instance-url: ${{ secrets.SN_INSTANCE_URL }}
           tool-id: ${{ secrets.SN_ORCHESTRATION_TOOL_ID }}
           context-github: ${{ toJSON(github) }}
-          job-name: 'Deploy'
-          change-details: '{"build_number":"21","pipeline_name":"CI_Pipeline","stage_name":"Create_Change"}'
+          change-details: '{"build_number":"21","pipeline_name":"CI_Pipeline","stage_name":"Create_Change","attempt_number":"1"}'
 ```
 The values for secrets should be setup in Step 1. Secrets should be created in Step 2.
 
@@ -91,7 +89,8 @@ The values for secrets should be setup in Step 1. Secrets should be created in S
 
 ### `change-details`
 
-The change details to be used for identifying change request in ServiceNow instance. The change details is a JSON object surrounded by curly braces _{}_ containing key-value pair separated by a comma _,_. A key-value pair consists of a key and a value separated by a colon _:_. The keys supported in key-value pair are *build_number*, *pipeline_name*, *stage_name*
+The change details to be used for identifying change request in ServiceNow instance. The change details is a JSON object surrounded by curly braces _{}_ containing key-value pair separated by a comma _,_. A key-value pair consists of a key and a value separated by a colon _:_. The keys supported in key-value pair are *build_number*, *pipeline_name*, *stage_name* and *attempt_number*  
+When attempt_number value is not provided, the latest workflow execution attempt is considered.
 
 ## Outputs
 
